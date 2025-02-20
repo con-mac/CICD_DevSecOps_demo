@@ -40,6 +40,12 @@ jobs:
           exit-code: 1  # Pipeline will fail if vulnerabilities are found
           severity: "CRITICAL,HIGH"  
 
+      ## Authenticate with Docker Hub (Required for Docker Scout)
+      - name: Docker Hub Login
+        run: |
+          echo "🔑 Logging into Docker Hub..."
+          echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
       # Install Docker Scout before running SBOM and security scan
       - name: Install Docker Scout
         run: |
