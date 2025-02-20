@@ -3,28 +3,28 @@ name: DevSecOps CI/CD Pipeline
 on:
   push:
     branches:
-      - master  # 
+      - master  # Trigger when pushing to master branch
 
 jobs:
   build_and_scan:
-    name: Build, Security Scan, and Deploy  # name displayed in GitHub Actions UI
+    name: Build, Security Scan, and Deploy  # Name displayed in GitHub Actions UI
     runs-on: ubuntu-latest  
 
     steps:
 
       ## 1. Compile (Src) Stage
 
-      # latest version of the repo
+      # Checkout latest version of the repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
       ## 2. Build Stage
 
-      # Docker Buildx for multi-platform builds and caching
+      # Set up Docker Buildx for multi-platform builds and caching
       - name: Set Up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Build docker nginx image
+      # Build Docker Nginx image
       - name: Build Docker Image
         run: |
           docker build -t devsecops-nginx .
@@ -37,12 +37,19 @@ jobs:
         with:
           image-ref: "devsecops-nginx"  # Scan the built Docker image
           format: "table"  # Output format
-          exit-code: 1  # Pipeline will fail and exit out if vulnerabilities are found
+          exit-code: 1  # Pipeline will fail if vulnerabilities are found
           severity: "CRITICAL,HIGH"  
 
+      # Install Docker Scout before running SBOM and security scan
+      - name: Install Docker Scout
+        run: |
+          echo "🔽 Installing Docker Scout..."
+          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install.sh
+          chmod +x install.sh
+          ./install.sh
+          docker scout --version
+
       # Generate SBOM (Software Bill of Materials) for Dependency check
-      # Generates SBOM and saves it to 'sbom.json' and display in GitHub Actions log
-      # run Docker scout on sbom and cves checker
       - name: Generate SBOM (Software Bill of Materials)
         run: |
           echo "🔍 Generating SBOM with Docker Scout..." 
