@@ -7,36 +7,46 @@ on:
 
 jobs:
   build_and_scan:
-    name: Build, Security Scan, and Deploy
+    name: Build, Security Scan, and Deploy  # Name displayed in GitHub Actions UI
     runs-on: ubuntu-latest  
 
     steps:
+
       ## 1. Compile (Source) Stage
+
+      # Checkout latest version of the repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
       ## 2. Build Stage
+
+      # Set up Docker Buildx for multi-platform builds and caching
       - name: Set Up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Build Docker Nginx image
       - name: Build Docker Image
         run: |
           docker build -t devsecops-nginx .
 
       ## 3. Test & Security Scan Stage      
+
+      # Security Scan using Trivy (SAST & Dependency scanning)
       - name: Scan for Vulnerabilities (Trivy)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "devsecops-nginx"
-          format: "table"
-          exit-code: 0
+          image-ref: "devsecops-nginx"  # Scan the built Docker image
+          format: "table"  # Output format
+          exit-code: 0  # Allow vulnerabilities, do not break pipeline
           severity: "CRITICAL,HIGH"  
 
+      ## Authenticate with Docker Hub (Required for Docker Scout)
       - name: Docker Hub Login
         run: |
           echo "🔑 Logging into Docker Hub..."
           echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
+      # Install Docker Scout before running SBOM and security scan
       - name: Install Docker Scout
         run: |
           echo "🔽 Installing Docker Scout..."
@@ -47,32 +57,45 @@ jobs:
           echo "✅ Verifying Docker Scout Installation..."
           docker scout quickview --help
 
+      # Generate SBOM (Software Bill of Materials) for Dependency check
       - name: Generate SBOM (Software Bill of Materials)
         run: |
           echo "🔍 Generating SBOM with Docker Scout..." 
           docker scout quickview devsecops-nginx > sbom.json 
           cat sbom.json  
 
+      # Run Docker Scout Security Scan and store reports
       - name: Run Docker Scout Security Scan
         run: |
-          echo "🛡️ Running Docker Scout Security Scan..."
-          docker scout cves devsecops-nginx --format sarif -o vulnerabilities.sarif || echo "⚠️ Vulnerabilities detected, but continuing pipeline..."
-          cat vulnerabilities.sarif
+            echo "🛡️ Running Docker Scout Security Scan..."
+            docker scout cves devsecops-nginx --format sarif -o vulnerabilities.sarif || echo "⚠️ Vulnerabilities detected, but continuing pipeline..."
+            cat vulnerabilities.sarif
 
-      # Start the application for DAST scanning
-      - name: Start Nginx Container
+
+      # Authenticate with GitHub Container Registry (GHCR) for OWASP ZAP
+      - name: Authenticate with GHCR
         run: |
-          docker run -d -p 8080:80 devsecops-nginx
-          sleep 10  # Give the container time to start
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    
 
-      # OWASP ZAP DAST Scan
+      ## OWASP ZAP Dynamic Application Security Testing (DAST) # This tests the live running application for vulnerabilities
+
+      - name: Docker Login for ZAP
+        run: |
+            echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            docker pull owasp/zap2docker-weekly
+
+
+      # This tests the live running application for vulnerabilities
       - name: Run OWASP ZAP Security Scan (DAST)
         uses: zaproxy/action-full-scan@v0.4.0
         with:
-          target: 'http://localhost:8080'
+          target: "http://localhost:8080" 
+          docker_name: 'owasp/zap2docker-weekly'
           allow_issue_writing: false
-          fail_action: false  # Don't fail the pipeline on detected issues
+          fail_action: false
 
-      ## 4. Deploy/Release Stage    
+      ## 4. Deploy/Release Stage
+    
       - name: Deploy Application (Placeholder)
         run: echo "Deployment step to be implemented (Terraform/Kubernetes etc.)"
