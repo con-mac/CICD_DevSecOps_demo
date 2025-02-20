@@ -68,8 +68,9 @@ jobs:
       - name: Run Docker Scout Security Scan
         run: |
             echo "🛡️ Running Docker Scout Security Scan..."
-            docker scout cves devsecops-nginx --format .report -o vulnerabilities.report || echo "⚠️ Vulnerabilities detected, but continuing pipeline..."
-            cat vulnerabilities.report
+            docker scout cves devsecops-nginx --format sarif -o vulnerabilities.sarif || echo "⚠️ Vulnerabilities detected, but continuing pipeline..."
+            cat vulnerabilities.sarif
+
 
 
       ## OWASP ZAP Dynamic Application Security Testing (DAST)
