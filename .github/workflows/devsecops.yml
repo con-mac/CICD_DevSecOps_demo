@@ -72,6 +72,11 @@ jobs:
             cat vulnerabilities.sarif
 
 
+      # Authenticate with GitHub Container Registry (GHCR) for OWASP ZAP
+      - name: Authenticate with GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    
 
       ## OWASP ZAP Dynamic Application Security Testing (DAST)
       - name: Run OWASP ZAP Security Scan (DAST)
