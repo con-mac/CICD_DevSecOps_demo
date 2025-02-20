@@ -77,7 +77,8 @@ jobs:
       - name: Run OWASP ZAP Security Scan (DAST)
         uses: zaproxy/action-full-scan@v0.4.0
         with:
-          target: "http://localhost:8080"  # This tests the live running application for vulnerabilities
+          target: "http://localhost:8080"
+          docker_name: "ghcr.io/zaproxy/zap-full-scan"  # This tests the live running application for vulnerabilities
 
       ## 4. Deploy/Release Stage
     
